@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/CSKU-Lab/cache/configs"
 	"github.com/CSKU-Lab/cache/constants"
 	"github.com/CSKU-Lab/cache/domain/repository"
 	"github.com/CSKU-Lab/cache/internal/adapter/redis"
@@ -18,7 +17,6 @@ type CacheApp interface {
 }
 
 type cacheApp struct {
-	cfg  *configs.Config
 	repo repository.CacheRepository
 }
 
