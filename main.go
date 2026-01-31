@@ -12,7 +12,7 @@ import (
 )
 
 type CacheApp interface {
-	GetRepo() repository.CacheRepository
+	Build(rawKey string) CacheBuild
 	Close() error
 }
 
@@ -40,6 +40,13 @@ func NewRedis(rawOpts *RedisOptions) (CacheApp, error) {
 	}, nil
 }
 
+func (ca *cacheApp) Build(rawKey string) CacheBuild {
+	return &cacheBuild{
+		rawKey: rawKey,
+		repo:   ca.repo,
+	}
+}
+
 func (ca *cacheApp) Close() error {
 	if ca.repo == nil {
 		return constants.NO_CACHE_CONN
@@ -52,19 +59,23 @@ func (ca *cacheApp) Close() error {
 	return nil
 }
 
-func (ca *cacheApp) GetRepo() repository.CacheRepository {
-	return ca.repo
-}
+type (
+	CacheObj struct {
+		rawKey string
+		key    string
+		ttl    time.Duration
+		repo   repository.CacheRepository
+	}
+)
 
-type CacheBuild[T any] interface {
-	All() CacheInstance[T]
-	One(id string) CacheInstance[T]
+type CacheBuild interface {
+	All(ttl time.Duration) CacheObj
+	One(ttl time.Duration, id string) CacheObj
 	InvalidateAll(ctx context.Context) error
 }
 
-type cacheBuild[T any] struct {
+type cacheBuild struct {
 	rawKey string
-	ttl    time.Duration
 	repo   repository.CacheRepository
 }
 
@@ -75,39 +86,40 @@ type CacheInstance[T any] interface {
 	LazyCaching(ctx context.Context, fetch func() (T, error)) (T, error)
 }
 type cacheInstance[T any] struct {
-	key    string
 	rawKey string
+	key    string
 	ttl    time.Duration
 	repo   repository.CacheRepository
 }
 
-func NewCacheBuild[T any](rawKey string, ttl time.Duration, repo repository.CacheRepository) CacheBuild[T] {
-	return &cacheBuild[T]{
-		rawKey: rawKey,
-		ttl:    ttl,
-		repo:   repo,
+func NewCacheInstance[T any](obj CacheObj) CacheInstance[T] {
+	return &cacheInstance[T]{
+		key:    obj.key,
+		rawKey: obj.rawKey,
+		ttl:    obj.ttl,
+		repo:   obj.repo,
 	}
 }
 
-func (cb *cacheBuild[T]) One(id string) CacheInstance[T] {
-	return &cacheInstance[T]{
+func (cb *cacheBuild) One(ttl time.Duration, id string) CacheObj {
+	return CacheObj{
 		rawKey: cb.rawKey,
 		key:    cb.rawKey + ":id:" + id,
-		ttl:    cb.ttl,
+		ttl:    ttl,
 		repo:   cb.repo,
 	}
 }
 
-func (cb *cacheBuild[T]) All() CacheInstance[T] {
-	return &cacheInstance[T]{
+func (cb *cacheBuild) All(ttl time.Duration) CacheObj {
+	return CacheObj{
 		rawKey: cb.rawKey,
 		key:    cb.rawKey + ":all",
-		ttl:    cb.ttl,
+		ttl:    ttl,
 		repo:   cb.repo,
 	}
 }
 
-func (cb *cacheBuild[T]) InvalidateAll(ctx context.Context) error {
+func (cb *cacheBuild) InvalidateAll(ctx context.Context) error {
 	keys, err := cb.repo.SMembers(ctx, cb.rawKey+":index")
 	if err != nil {
 		return err
