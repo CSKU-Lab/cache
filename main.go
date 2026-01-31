@@ -12,7 +12,6 @@ import (
 )
 
 type CacheApp interface {
-	NewRedis(opts *redisLib.Options) (repository.CacheRepository, error)
 	Close() error
 }
 
@@ -25,7 +24,7 @@ type RedisOptions struct {
 	Password string
 }
 
-func (ca *cacheApp) NewRedis(rawOpts *RedisOptions) (repository.CacheRepository, error) {
+func NewRedis(rawOpts *RedisOptions) (CacheApp, error) {
 	redisRepo, err := redis.NewRedisCacheAdapter(&redisLib.Options{
 		Addr:     rawOpts.Addr,
 		Password: rawOpts.Password,
@@ -35,8 +34,9 @@ func (ca *cacheApp) NewRedis(rawOpts *RedisOptions) (repository.CacheRepository,
 	if err != nil {
 		return nil, err
 	}
-	ca.repo = redisRepo
-	return redisRepo, nil
+	return &cacheApp{
+		repo: redisRepo,
+	}, nil
 }
 
 func (ca *cacheApp) Close() error {
