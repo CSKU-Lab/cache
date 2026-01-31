@@ -56,6 +56,18 @@ func (ca *cacheApp) GetRepo() repository.CacheRepository {
 	return ca.repo
 }
 
+type CacheBuild[T any] interface {
+	All() CacheInstance[T]
+	One(id string) CacheInstance[T]
+	InvalidateAll(ctx context.Context) error
+}
+
+type cacheBuild[T any] struct {
+	rawKey string
+	ttl    time.Duration
+	repo   repository.CacheRepository
+}
+
 type CacheInstance[T any] interface {
 	GetFromCache(ctx context.Context) (*T, error)
 	SetToCache(ctx context.Context, value T) error
@@ -63,21 +75,61 @@ type CacheInstance[T any] interface {
 	LazyCaching(ctx context.Context, fetch func() (T, error)) (T, error)
 }
 type cacheInstance[T any] struct {
-	cache string
-	ttl   time.Duration
-	repo  repository.CacheRepository
+	key    string
+	rawKey string
+	ttl    time.Duration
+	repo   repository.CacheRepository
 }
 
-func NewCacheInstance[T any](cache string, ttl time.Duration, repo repository.CacheRepository) CacheInstance[T] {
-	return &cacheInstance[T]{
-		cache: cache,
-		ttl:   ttl,
-		repo:  repo,
+func NewCacheBuild[T any](rawKey string, ttl time.Duration, repo repository.CacheRepository) CacheBuild[T] {
+	return &cacheBuild[T]{
+		rawKey: rawKey,
+		ttl:    ttl,
+		repo:   repo,
 	}
 }
 
+func (cb *cacheBuild[T]) One(id string) CacheInstance[T] {
+	return &cacheInstance[T]{
+		rawKey: cb.rawKey,
+		key:    cb.rawKey + ":id:" + id,
+		ttl:    cb.ttl,
+		repo:   cb.repo,
+	}
+}
+
+func (cb *cacheBuild[T]) All() CacheInstance[T] {
+	return &cacheInstance[T]{
+		rawKey: cb.rawKey,
+		key:    cb.rawKey + ":all",
+		ttl:    cb.ttl,
+		repo:   cb.repo,
+	}
+}
+
+func (cb *cacheBuild[T]) InvalidateAll(ctx context.Context) error {
+	keys, err := cb.repo.SMembers(ctx, cb.rawKey+":index")
+	if err != nil {
+		return err
+	}
+
+	for _, k := range keys {
+		err = cb.repo.Delete(ctx, string(k))
+		if err != nil {
+			return err
+		}
+	}
+
+	err = cb.repo.Delete(ctx, cb.rawKey+":index")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ci *cacheInstance[T]) GetFromCache(ctx context.Context) (*T, error) {
-	data, hit, err := ci.repo.Get(ctx, ci.cache)
+	data, hit, err := ci.repo.Get(ctx, ci.key)
 	if err != nil {
 		return nil, err
 	}
@@ -100,16 +152,16 @@ func (ci *cacheInstance[T]) SetToCache(ctx context.Context, value T) error {
 		return err
 	}
 
-	err = ci.repo.Set(ctx, ci.cache, jsonString, ci.ttl)
+	err = ci.repo.Set(ctx, ci.key, jsonString, ci.ttl)
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return ci.repo.SAdd(ctx, ci.rawKey+":index", []byte(ci.key))
 }
 
 func (ci *cacheInstance[T]) DeleteCache(ctx context.Context) error {
-	err := ci.repo.Delete(ctx, ci.cache)
+	err := ci.repo.Delete(ctx, ci.key)
 	if err != nil {
 		return err
 	}

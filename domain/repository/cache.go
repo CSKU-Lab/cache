@@ -10,4 +10,7 @@ type CacheRepository interface {
 	Set(ctx context.Context, cacheKey string, cacheValue []byte, ttl time.Duration) error
 	Delete(ctx context.Context, cacheKey string) error
 	Close() error
+
+	SAdd(ctx context.Context, key string, member []byte) error
+	SMembers(ctx context.Context, key string) ([][]byte, error)
 }

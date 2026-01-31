@@ -27,6 +27,31 @@ func NewRedisCacheAdapter(opts *redis.Options) (repository.CacheRepository, erro
 	}, nil
 }
 
+func (r *redisCacheAdapter) SAdd(
+	ctx context.Context,
+	key string,
+	member []byte,
+) error {
+	return r.client.SAdd(ctx, key, member).Err()
+}
+
+func (r *redisCacheAdapter) SMembers(
+	ctx context.Context,
+	key string,
+) ([][]byte, error) {
+	members, err := r.client.SMembers(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([][]byte, 0, len(members))
+	for _, m := range members {
+		result = append(result, []byte(m))
+	}
+
+	return result, nil
+}
+
 func (r *redisCacheAdapter) Get(ctx context.Context, cacheKey string) ([]byte, bool, error) {
 	val, err := r.client.Get(ctx, cacheKey).Bytes()
 	if err == redis.Nil {
