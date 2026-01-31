@@ -21,9 +21,7 @@ func NewConfig() *Config {
 	}
 
 	return &Config{
-		REDIS_SERVER_URL:       os.Getenv("REDIS_SERVER_URL"),
-		REDIS_PASSWORD:         os.Getenv("REDIS_PASSWORD"),
-		REDIS_DB:               os.Getenv("REDIS_DB"),
-		REDIS_PROTOCOL_VERSION: os.Getenv("REDIS_PROTOCOL_VERSION"),
+		REDIS_SERVER_URL: os.Getenv("REDIS_SERVER_URL"),
+		REDIS_PASSWORD:   os.Getenv("REDIS_PASSWORD"),
 	}
 }
