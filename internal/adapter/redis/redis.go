@@ -19,11 +19,18 @@ func NewRedisCacheAdapter(cfg *configs.Config) (repository.CacheRepository, erro
 	if cfg == nil {
 		return nil, constants.CONFIG_NOT_FOUND
 	}
-	redisDb, err := strconv.Atoi(cfg.REDIS_DB)
+	redisDb := 0
+	if cfg.REDIS_DB != "" {
+		resRedisDb, err := strconv.Atoi(cfg.REDIS_DB)
+		if err != nil {
+			return nil, err
+		}
+		redisDb = resRedisDb
+	}
+	redisProtocol, err := strconv.Atoi(cfg.REDIS_PROTOCOL_VERSION)
 	if err != nil {
 		return nil, err
 	}
-	redisProtocol, err := strconv.Atoi(cfg.REDIS_PROTOCOL_VERSION)
 	client := redis.NewClient(&redis.Options{
 		Addr:     cfg.REDIS_SERVER_URL,
 		Password: cfg.REDIS_PASSWORD,
