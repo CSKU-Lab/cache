@@ -12,6 +12,7 @@ import (
 )
 
 type CacheApp interface {
+	GetRepo() repository.CacheRepository
 	Close() error
 }
 
