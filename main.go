@@ -12,6 +12,7 @@ import (
 )
 
 type CacheApp interface {
+	GetRepo() repository.CacheRepository
 	Close() error
 }
 
@@ -45,6 +46,10 @@ func (ca *cacheApp) Close() error {
 		return err
 	}
 	return nil
+}
+
+func (ca *cacheApp) GetRepo() repository.CacheRepository {
+	return ca.repo
 }
 
 type CacheInstance[T any] interface {
