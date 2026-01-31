@@ -11,7 +11,15 @@ import (
 	"github.com/CSKU-Lab/cache/internal/adapter/redis"
 )
 
-func Init(cacheVariant string) (repository.CacheRepository, error) {
+type CacheApp interface {
+	Close() error
+}
+
+type cacheApp struct {
+	repo repository.CacheRepository
+}
+
+func Init(cacheVariant string) (CacheApp, error) {
 	cfg := configs.NewConfig()
 	redisRepo, err := redis.NewRedisCacheAdapter(cfg)
 	if err != nil {
@@ -26,14 +34,23 @@ func Init(cacheVariant string) (repository.CacheRepository, error) {
 		return nil, constants.CACHE_VARIANT_NOT_FOUND
 	}
 
-	return cacheRepo, nil
+	return &cacheApp{
+		repo: cacheRepo,
+	}, nil
+}
+
+func (ca *cacheApp) Close() error {
+	err := ca.repo.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type CacheInstance[T any] interface {
 	GetFromCache(ctx context.Context) (*T, error)
 	SetToCache(ctx context.Context, value T) error
 	DeleteCache(ctx context.Context) error
-	Close() error
 }
 type cacheInstance[T any] struct {
 	cache string
@@ -83,14 +100,6 @@ func (ci *cacheInstance[T]) SetToCache(ctx context.Context, value T) error {
 
 func (ci *cacheInstance[T]) DeleteCache(ctx context.Context) error {
 	err := ci.repo.Delete(ctx, ci.cache)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ci *cacheInstance[T]) Close() error {
-	err := ci.repo.Close()
 	if err != nil {
 		return err
 	}
