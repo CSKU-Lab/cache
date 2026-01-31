@@ -60,6 +60,7 @@ type CacheInstance[T any] interface {
 	GetFromCache(ctx context.Context) (*T, error)
 	SetToCache(ctx context.Context, value T) error
 	DeleteCache(ctx context.Context) error
+	LazyCaching(ctx context.Context, fetch func() T) (*T, error)
 }
 type cacheInstance[T any] struct {
 	cache string
@@ -113,4 +114,20 @@ func (ci *cacheInstance[T]) DeleteCache(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (ci *cacheInstance[T]) LazyCaching(ctx context.Context, fetch func() T) (*T, error) {
+	res, err := ci.GetFromCache(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		fetchedData := fetch()
+		err := ci.SetToCache(ctx, fetchedData)
+		if err != nil {
+			return nil, err
+		}
+		res = &fetchedData
+	}
+	return res, nil
 }
