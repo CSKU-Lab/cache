@@ -20,7 +20,7 @@ func NewRedisCacheAdapter(cfg *configs.Config) (repository.CacheRepository, erro
 	}
 
 	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "cache:6379",
 		Password: "",
 		DB:       0,
 		Protocol: 2,
