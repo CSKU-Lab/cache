@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/CSKU-Lab/cache/configs"
@@ -18,12 +19,16 @@ func NewRedisCacheAdapter(cfg *configs.Config) (repository.CacheRepository, erro
 	if cfg == nil {
 		return nil, constants.CONFIG_NOT_FOUND
 	}
-
+	redisDb, err := strconv.Atoi(cfg.REDIS_DB)
+	if err != nil {
+		return nil, err
+	}
+	redisProtocol, err := strconv.Atoi(cfg.REDIS_PROTOCOL_VERSION)
 	client := redis.NewClient(&redis.Options{
-		Addr:     "cache:6379",
-		Password: "",
-		DB:       0,
-		Protocol: 2,
+		Addr:     cfg.REDIS_SERVER_URL,
+		Password: cfg.REDIS_PASSWORD,
+		DB:       redisDb,
+		Protocol: redisProtocol,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
