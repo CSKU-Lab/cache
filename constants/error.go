@@ -3,6 +3,6 @@ package constants
 import "errors"
 
 var (
-	CONFIG_NOT_FOUND        = errors.New("configuration not found")
-	CACHE_VARIANT_NOT_FOUND = errors.New("cache variant not found")
+	CONFIG_NOT_FOUND = errors.New("configuration not found")
+	NO_CACHE_CONN    = errors.New("no cache connection established")
 )

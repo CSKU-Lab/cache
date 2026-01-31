@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/CSKU-Lab/cache/configs"
-	"github.com/CSKU-Lab/cache/constants"
 	"github.com/CSKU-Lab/cache/domain/repository"
 	"github.com/redis/go-redis/v9"
 )
@@ -14,16 +12,8 @@ type redisCacheAdapter struct {
 	client *redis.Client
 }
 
-func NewRedisCacheAdapter(cfg *configs.Config) (repository.CacheRepository, error) {
-	if cfg == nil {
-		return nil, constants.CONFIG_NOT_FOUND
-	}
-	client := redis.NewClient(&redis.Options{
-		Addr:     cfg.REDIS_SERVER_URL,
-		Password: cfg.REDIS_PASSWORD,
-		DB:       0,
-		Protocol: 2,
-	})
+func NewRedisCacheAdapter(opts *redis.Options) (repository.CacheRepository, error) {
+	client := redis.NewClient(opts)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

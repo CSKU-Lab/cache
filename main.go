@@ -9,38 +9,43 @@ import (
 	"github.com/CSKU-Lab/cache/constants"
 	"github.com/CSKU-Lab/cache/domain/repository"
 	"github.com/CSKU-Lab/cache/internal/adapter/redis"
+	redisLib "github.com/redis/go-redis/v9"
 )
 
 type CacheApp interface {
-	GetRepo() repository.CacheRepository
+	NewRedis(opts *redisLib.Options) (repository.CacheRepository, error)
 	Close() error
 }
 
 type cacheApp struct {
+	cfg  *configs.Config
 	repo repository.CacheRepository
 }
 
-func Init(cacheVariant string) (CacheApp, error) {
-	cfg := configs.NewConfig()
-	redisRepo, err := redis.NewRedisCacheAdapter(cfg)
+type RedisOptions struct {
+	Addr     string
+	Password string
+}
+
+func (ca *cacheApp) NewRedis(rawOpts *RedisOptions) (repository.CacheRepository, error) {
+	redisRepo, err := redis.NewRedisCacheAdapter(&redisLib.Options{
+		Addr:     rawOpts.Addr,
+		Password: rawOpts.Password,
+		DB:       0,
+		Protocol: 2,
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	cacheFactory := repository.NewCacheFactory()
-	cacheFactory.Register("redis", redisRepo)
-
-	cacheRepo, exists := cacheFactory.GetHandler(cacheVariant)
-	if !exists {
-		return nil, constants.CACHE_VARIANT_NOT_FOUND
-	}
-
-	return &cacheApp{
-		repo: cacheRepo,
-	}, nil
+	ca.repo = redisRepo
+	return redisRepo, nil
 }
 
 func (ca *cacheApp) Close() error {
+	if ca.repo == nil {
+		return constants.NO_CACHE_CONN
+	}
+
 	err := ca.repo.Close()
 	if err != nil {
 		return err
