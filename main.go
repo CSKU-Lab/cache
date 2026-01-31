@@ -50,12 +50,17 @@ func NewCacheInstance[T any](cache string, ttl time.Duration, repo repository.Ca
 }
 
 func (ci *cacheInstance[T]) GetFromCache(ctx context.Context) (*T, error) {
-	data, err := ci.repo.Get(ctx, ci.cache)
+	data, hit, err := ci.repo.Get(ctx, ci.cache)
 	if err != nil {
 		return nil, err
 	}
+
+	if !hit {
+		return nil, nil
+	}
+
 	var result T
-	if err := json.Unmarshal([]byte(data), &result); err != nil {
+	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, err
 	}
 

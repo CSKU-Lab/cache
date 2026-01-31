@@ -38,12 +38,16 @@ func NewRedisCacheAdapter(cfg *configs.Config) (repository.CacheRepository, erro
 	}, nil
 }
 
-func (r *redisCacheAdapter) Get(ctx context.Context, cacheKey string) (string, error) {
-	val, err := r.client.Get(ctx, cacheKey).Result()
-	if err != nil {
-		return "", err
+func (r *redisCacheAdapter) Get(ctx context.Context, cacheKey string) ([]byte, bool, error) {
+	val, err := r.client.Get(ctx, cacheKey).Bytes()
+	if err == redis.Nil {
+		return nil, false, nil
 	}
-	return val, nil
+	if err != nil {
+		return nil, false, err
+	}
+
+	return val, true, nil
 }
 
 func (r *redisCacheAdapter) Set(ctx context.Context, cacheKey string, cacheValue []byte, ttl time.Duration) error {
